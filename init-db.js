@@ -95,6 +95,18 @@ async function main() {
       console.log('✅ Admin par défaut créé (email: admin@nicoshop.com, password: admin123)')
     }
 
+    // Assurer la colonne 'theme' existe dans users
+    try {
+      const cols = await db.all("PRAGMA table_info('users')")
+      const hasTheme = cols.some(c => c.name === 'theme')
+      if (!hasTheme) {
+        await db.run("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'light'")
+        console.log('✅ Colonne theme ajoutée à users')
+      }
+    } catch (err) {
+      console.warn('Impossible de vérifier/ajouter la colonne theme:', err.message)
+    }
+
     console.log('🎉 Base de données initialisée avec succès!')
   } catch (error) {
     console.error("❌ Erreur lors de l'initialisation:", error.message)

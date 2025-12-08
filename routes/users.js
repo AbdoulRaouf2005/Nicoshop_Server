@@ -122,4 +122,21 @@ router.delete('/:id',
   }
 );
 
+// PUT - Mettre à jour le thème de l'utilisateur connecté
+router.put('/me/theme',
+  authenticateToken,
+  async (req, res) => {
+    const { theme } = req.body
+    if (!['light', 'dark'].includes(theme)) return res.status(400).json({ error: 'Thème invalide' })
+    try {
+      const result = await db.run('UPDATE users SET theme = ? WHERE id = ?', [theme, req.user.id])
+      if (!result.changes || result.changes === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' })
+      res.json({ message: 'Thème mis à jour', theme })
+    } catch (err) {
+      console.error('Erreur mise à jour thème:', err)
+      res.status(500).json({ error: 'Erreur serveur' })
+    }
+  }
+);
+
 export default router;
