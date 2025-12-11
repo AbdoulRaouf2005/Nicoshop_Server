@@ -1,0 +1,1090 @@
+// ============================================
+// FICHIER 1: src/data/busAxes.js
+// ============================================
+
+export const busAxes = [
+  {
+    id: 1,
+    name: "Axe A - Centre-Ville",
+    shortName: "A",
+    color: "#10B981",
+    description: "Gare UAM → Grand Marché → Kennedy",
+    stops: [
+      { id: 1, name: "Gare Universitaire UAM", lat: 13.5137, lng: 2.1098, order: 1 },
+      { id: 2, name: "Rond-Point Maourey", lat: 13.5115, lng: 2.1125, order: 2 },
+      { id: 3, name: "Grand Marché", lat: 13.5116, lng: 2.1191, order: 3 },
+      { id: 4, name: "Petit Marché", lat: 13.5089, lng: 2.1254, order: 4 },
+      { id: 5, name: "Rond-Point Kennedy", lat: 13.5067, lng: 2.1298, order: 5 }
+    ],
+    schedules: ["06:30", "07:30", "08:30", "10:00", "12:00", "14:00", "16:00", "18:00", "19:30"],
+    duration: "25 min"
+  },
+  {
+    id: 2,
+    name: "Axe B - Plateau",
+    shortName: "B",
+    color: "#3B82F6",
+    description: "Gare UAM → Yantala → Plateau",
+    stops: [
+      { id: 6, name: "Gare Universitaire UAM", lat: 13.5137, lng: 2.1098, order: 1 },
+      { id: 7, name: "Yantala Haut", lat: 13.5178, lng: 2.1045, order: 2 },
+      { id: 8, name: "Hôpital National", lat: 13.5203, lng: 2.1012, order: 3 },
+      { id: 9, name: "Palais des Congrès", lat: 13.5245, lng: 2.0989, order: 4 },
+      { id: 10, name: "Plateau", lat: 13.5278, lng: 2.0956, order: 5 }
+    ],
+    schedules: ["06:00", "07:00", "08:00", "09:30", "11:30", "13:30", "15:30", "17:30", "19:00"],
+    duration: "30 min"
+  },
+  {
+    id: 3,
+    name: "Axe C - Aéroport",
+    shortName: "C",
+    color: "#F59E0B",
+    description: "Gare UAM → Route Filingué → Aéroport",
+    stops: [
+      { id: 11, name: "Gare Universitaire UAM", lat: 13.5137, lng: 2.1098, order: 1 },
+      { id: 12, name: "Wadata", lat: 13.5056, lng: 2.0934, order: 2 },
+      { id: 13, name: "Route Filingué", lat: 13.4989, lng: 2.0823, order: 3 },
+      { id: 14, name: "Aéroport Diori Hamani", lat: 13.4815, lng: 2.1836, order: 4 }
+    ],
+    schedules: ["05:30", "07:00", "09:00", "11:00", "14:00", "16:00", "18:00", "20:00"],
+    duration: "40 min"
+  },
+  {
+    id: 4,
+    name: "Axe D - Kirkissoye",
+    shortName: "D",
+    color: "#8B5CF6",
+    description: "Gare UAM → Lamordé → Kirkissoye",
+    stops: [
+      { id: 15, name: "Gare Universitaire UAM", lat: 13.5137, lng: 2.1098, order: 1 },
+      { id: 16, name: "Lamordé", lat: 13.5234, lng: 2.1234, order: 2 },
+      { id: 17, name: "Dar Es Salam", lat: 13.5312, lng: 2.1345, order: 3 },
+      { id: 18, name: "Kirkissoye Centre", lat: 13.5456, lng: 2.1489, order: 4 }
+    ],
+    schedules: ["06:45", "08:00", "09:30", "11:30", "13:30", "15:30", "17:30", "19:00"],
+    duration: "35 min"
+  }
+];
+
+// ============================================
+// FICHIER 2: src/services/storageService.js
+// ============================================
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+class StorageService {
+  async saveData(key, data) {
+    try {
+      const jsonValue = JSON.stringify(data);
+      await AsyncStorage.setItem(key, jsonValue);
+      return true;
+    } catch (e) {
+      console.error('Error saving data:', e);
+      return false;
+    }
+  }
+
+  async getData(key) {
+    try {
+      const jsonValue = await AsyncStorage.getItem(key);
+      return jsonValue != null ? JSON.parse(jsonValue) : null;
+    } catch (e) {
+      console.error('Error reading data:', e);
+      return null;
+    }
+  }
+
+  async saveFavoriteAxe(axeId) {
+    const favorites = await this.getData('favorites') || [];
+    if (!favorites.includes(axeId)) {
+      favorites.push(axeId);
+      await this.saveData('favorites', favorites);
+    }
+  }
+
+  async removeFavoriteAxe(axeId) {
+    const favorites = await this.getData('favorites') || [];
+    const updated = favorites.filter(id => id !== axeId);
+    await this.saveData('favorites', updated);
+  }
+
+  async getFavorites() {
+    return await this.getData('favorites') || [];
+  }
+}
+
+export default new StorageService();
+
+// ============================================
+// FICHIER 3: src/services/locationService.js
+// ============================================
+
+import Geolocation from '@react-native-community/geolocation';
+
+class LocationService {
+  constructor() {
+    this.watchId = null;
+  }
+
+  getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+      Geolocation.getCurrentPosition(
+        position => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+        },
+        error => reject(error),
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
+      );
+    });
+  }
+
+  watchPosition(callback) {
+    this.watchId = Geolocation.watchPosition(
+      position => {
+        callback({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+      },
+      error => console.error('Watch position error:', error),
+      { enableHighAccuracy: true, distanceFilter: 10 }
+    );
+  }
+
+  stopWatching() {
+    if (this.watchId !== null) {
+      Geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
+  }
+
+  calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Rayon de la Terre en km
+    const dLat = this.toRad(lat2 - lat1);
+    const dLon = this.toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance en km
+  }
+
+  toRad(degrees) {
+    return degrees * (Math.PI / 180);
+  }
+
+  isNearStop(currentPos, stopPos, thresholdKm = 0.1) {
+    const distance = this.calculateDistance(
+      currentPos.latitude,
+      currentPos.longitude,
+      stopPos.lat,
+      stopPos.lng
+    );
+    return distance <= thresholdKm;
+  }
+}
+
+export default new LocationService();
+
+// ============================================
+// FICHIER 4: src/styles/colors.js
+// ============================================
+
+export const colors = {
+  primary: '#6366F1',
+  secondary: '#8B5CF6',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  info: '#3B82F6',
+  
+  background: '#F9FAFB',
+  surface: '#FFFFFF',
+  
+  text: {
+    primary: '#111827',
+    secondary: '#6B7280',
+    tertiary: '#9CA3AF',
+    inverse: '#FFFFFF'
+  },
+  
+  border: '#E5E7EB',
+  shadow: '#00000015',
+  
+  axeA: '#10B981',
+  axeB: '#3B82F6',
+  axeC: '#F59E0B',
+  axeD: '#8B5CF6'
+};
+
+// ============================================
+// FICHIER 5: src/components/common/Button.js
+// ============================================
+
+import React from 'react';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { colors } from '../../styles/colors';
+
+const Button = ({ title, onPress, style, textStyle, loading = false, disabled = false }) => {
+  return (
+    <TouchableOpacity
+      style={[styles.button, style, disabled && styles.disabled]}
+      onPress={onPress}
+      disabled={disabled || loading}
+      activeOpacity={0.7}
+    >
+      {loading ? (
+        <ActivityIndicator color={colors.text.inverse} />
+      ) : (
+        <Text style={[styles.text, textStyle]}>{title}</Text>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  backButton: {
+    marginRight: 12,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  backText: {
+    fontSize: 28,
+    color: colors.primary,
+    fontWeight: '300'
+  },
+  headerContent: {
+    flex: 1
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text.primary
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    marginTop: 2
+  },
+  headerBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  headerBadgeText: {
+    color: colors.text.inverse,
+    fontSize: 18,
+    fontWeight: 'bold'
+  },
+  map: {
+    flex: 1
+  },
+  busMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5
+  },
+  busIcon: {
+    fontSize: 20
+  },
+  bottomCard: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    marginBottom: 16,
+    overflow: 'hidden'
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text.primary
+  },
+  infoProgress: {
+    fontSize: 13,
+    color: colors.text.secondary
+  },
+  nextStopCard: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    marginBottom: 12
+  },
+  nextStopName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 4
+  },
+  nextStopEta: {
+    fontSize: 14,
+    color: colors.text.secondary
+  },
+  notification: {
+    fontSize: 13,
+    color: colors.text.tertiary,
+    textAlign: 'center'
+  },
+  completedCard: {
+    alignItems: 'center',
+    paddingVertical: 20
+  },
+  completedIcon: {
+    fontSize: 48,
+    marginBottom: 8
+  },
+  completedText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 4
+  },
+  completedSubtext: {
+    fontSize: 14,
+    color: colors.text.secondary
+  }
+});
+
+export default TrajectoryScreen;
+
+// ============================================
+// FICHIER 10: src/navigation/AppNavigator.js
+// ============================================
+
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import HomeScreen from '../screens/HomeScreen';
+import AxeDetailScreen from '../screens/AxeDetailScreen';
+import TrajectoryScreen from '../screens/TrajectoryScreen';
+
+const Stack = createStackNavigator();
+
+const AppNavigator = () => {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          cardStyleInterpolator: ({ current, layouts }) => {
+            return {
+              cardStyle: {
+                transform: [
+                  {
+                    translateX: current.progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [layouts.screen.width, 0],
+                    }),
+                  },
+                ],
+              },
+            };
+          },
+        }}
+      >
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="AxeDetail" component={AxeDetailScreen} />
+        <Stack.Screen name="Trajectory" component={TrajectoryScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
+export default AppNavigator;
+
+// ============================================
+// FICHIER 11: App.js (Point d'entrée)
+// ============================================
+
+import React from 'react';
+import AppNavigator from './src/navigation/AppNavigator';
+
+const App = () => {
+  return <AppNavigator />;
+};
+
+export default App;create({
+  button: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3
+  },
+  text: {
+    color: colors.text.inverse,
+    fontSize: 16,
+    fontWeight: '600'
+  },
+  disabled: {
+    opacity: 0.5
+  }
+});
+
+export default Button;
+
+// ============================================
+// FICHIER 6: src/components/home/AxeCard.js
+// ============================================
+
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors } from '../../styles/colors';
+
+const AxeCard = ({ axe, onPress }) => {
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={[styles.badge, { backgroundColor: axe.color }]}>
+        <Text style={styles.badgeText}>{axe.shortName}</Text>
+      </View>
+      
+      <View style={styles.content}>
+        <Text style={styles.title}>{axe.name}</Text>
+        <Text style={styles.description}>{axe.description}</Text>
+        <View style={styles.footer}>
+          <Text style={styles.info}>🕐 {axe.schedules.length} départs</Text>
+          <Text style={styles.info}>⏱️ {axe.duration}</Text>
+        </View>
+      </View>
+      
+      <Text style={styles.arrow}>›</Text>
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    alignItems: 'center',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3
+  },
+  badge: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14
+  },
+  badgeText: {
+    color: colors.text.inverse,
+    fontSize: 24,
+    fontWeight: 'bold'
+  },
+  content: {
+    flex: 1
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 4
+  },
+  description: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    marginBottom: 8
+  },
+  footer: {
+    flexDirection: 'row',
+    gap: 12
+  },
+  info: {
+    fontSize: 12,
+    color: colors.text.tertiary
+  },
+  arrow: {
+    fontSize: 28,
+    color: colors.text.tertiary,
+    marginLeft: 8
+  }
+});
+
+export default AxeCard;
+
+// ============================================
+// FICHIER 7: src/screens/HomeScreen.js
+// ============================================
+
+import React from 'react';
+import { View, Text, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
+import { busAxes } from '../data/busAxes';
+import AxeCard from '../components/home/AxeCard';
+import { colors } from '../styles/colors';
+
+const HomeScreen = ({ navigation }) => {
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerIcon}>
+          <Text style={styles.headerIconText}>🚌</Text>
+        </View>
+        <View>
+          <Text style={styles.headerTitle}>TransportU</Text>
+          <Text style={styles.headerSubtitle}>Gare Universitaire UAM - Niamey</Text>
+        </View>
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.mapCard}>
+          <Text style={styles.mapTitle}>📍 Carte de la Gare</Text>
+          <View style={styles.mapPlaceholder}>
+            <Text style={styles.mapText}>Plan de la gare</Text>
+            <Text style={styles.mapSubtext}>4 axes disponibles</Text>
+            <View style={styles.dotContainer}>
+              <View style={[styles.dot, { backgroundColor: colors.axeA }]} />
+              <View style={[styles.dot, { backgroundColor: colors.axeB }]} />
+              <View style={[styles.dot, { backgroundColor: colors.axeC }]} />
+              <View style={[styles.dot, { backgroundColor: colors.axeD }]} />
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Choisissez votre axe</Text>
+        
+        {busAxes.map(axe => (
+          <AxeCard
+            key={axe.id}
+            axe={axe}
+            onPress={() => navigation.navigate('AxeDetail', { axe })}
+          />
+        ))}
+
+        <View style={styles.footer} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  headerIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12
+  },
+  headerIconText: {
+    fontSize: 24
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: colors.text.primary
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    marginTop: 2
+  },
+  content: {
+    flex: 1
+  },
+  mapCard: {
+    margin: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3
+  },
+  mapTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 12
+  },
+  mapPlaceholder: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderStyle: 'dashed'
+  },
+  mapText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text.secondary,
+    marginBottom: 4
+  },
+  mapSubtext: {
+    fontSize: 13,
+    color: colors.text.tertiary
+  },
+  dotContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5
+  },
+  sectionTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginHorizontal: 16,
+    marginVertical: 12
+  },
+  footer: {
+    height: 20
+  }
+});
+
+export default HomeScreen;
+
+// ============================================
+// FICHIER 8: src/screens/AxeDetailScreen.js
+// ============================================
+
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { colors } from '../styles/colors';
+
+const AxeDetailScreen = ({ route, navigation }) => {
+  const { axe } = route.params;
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backText}>‹ Retour</Text>
+        </TouchableOpacity>
+        
+        <View style={styles.headerContent}>
+          <View style={[styles.badge, { backgroundColor: axe.color }]}>
+            <Text style={styles.badgeText}>{axe.shortName}</Text>
+          </View>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>{axe.name}</Text>
+            <Text style={styles.headerSubtitle}>{axe.description}</Text>
+          </View>
+        </View>
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Horaires */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🕐 Horaires de départ</Text>
+          <View style={styles.scheduleGrid}>
+            {axe.schedules.map((schedule, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.scheduleCard, { borderLeftColor: axe.color }]}
+                onPress={() => navigation.navigate('Trajectory', { axe, schedule })}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.scheduleTime}>{schedule}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Arrêts */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📍 Arrêts sur le trajet</Text>
+          <View style={styles.stopsContainer}>
+            {axe.stops.map((stop, index) => (
+              <View key={stop.id} style={styles.stopItem}>
+                <View style={styles.stopIndicator}>
+                  <View style={[styles.stopDot, { borderColor: axe.color }]} />
+                  {index < axe.stops.length - 1 && (
+                    <View style={[styles.stopLine, { backgroundColor: axe.color }]} />
+                  )}
+                </View>
+                <View style={styles.stopInfo}>
+                  <Text style={styles.stopName}>{stop.name}</Text>
+                  <Text style={styles.stopOrder}>Arrêt {stop.order}/{axe.stops.length}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.footer} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background
+  },
+  header: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  backButton: {
+    marginBottom: 12
+  },
+  backText: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '600'
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  badge: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12
+  },
+  badgeText: {
+    color: colors.text.inverse,
+    fontSize: 22,
+    fontWeight: 'bold'
+  },
+  headerText: {
+    flex: 1
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text.primary
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    marginTop: 2
+  },
+  content: {
+    flex: 1
+  },
+  section: {
+    marginTop: 16,
+    paddingHorizontal: 16
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 12
+  },
+  scheduleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  scheduleCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    minWidth: 100,
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2
+  },
+  scheduleTime: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text.primary
+  },
+  stopsContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 16
+  },
+  stopItem: {
+    flexDirection: 'row',
+    marginBottom: 16
+  },
+  stopIndicator: {
+    alignItems: 'center',
+    marginRight: 12,
+    width: 20
+  },
+  stopDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 4,
+    backgroundColor: colors.surface
+  },
+  stopLine: {
+    width: 2,
+    flex: 1,
+    marginVertical: 4,
+    opacity: 0.3
+  },
+  stopInfo: {
+    flex: 1,
+    justifyContent: 'center'
+  },
+  stopName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text.primary
+  },
+  stopOrder: {
+    fontSize: 12,
+    color: colors.text.tertiary,
+    marginTop: 2
+  },
+  footer: {
+    height: 20
+  }
+});
+
+export default AxeDetailScreen;
+
+// ============================================
+// FICHIER 9: src/screens/TrajectoryScreen.js
+// ============================================
+
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { colors } from '../styles/colors';
+import locationService from '../services/locationService';
+
+const TrajectoryScreen = ({ route, navigation }) => {
+  const { axe, schedule } = route.params;
+  const [currentPosition, setCurrentPosition] = useState(null);
+  const [currentStopIndex, setCurrentStopIndex] = useState(0);
+
+  useEffect(() => {
+    // Simuler position initiale
+    setCurrentPosition({
+      latitude: axe.stops[0].lat,
+      longitude: axe.stops[0].lng
+    });
+
+    // Simuler le mouvement du bus
+    const interval = setInterval(() => {
+      setCurrentStopIndex(prev => {
+        const next = prev + 1;
+        if (next >= axe.stops.length) {
+          clearInterval(interval);
+          return prev;
+        }
+        setCurrentPosition({
+          latitude: axe.stops[next].lat,
+          longitude: axe.stops[next].lng
+        });
+        return next;
+      });
+    }, 5000); // Change de position toutes les 5 secondes
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const nextStop = axe.stops[currentStopIndex + 1];
+  const coordinates = axe.stops.map(stop => ({
+    latitude: stop.lat,
+    longitude: stop.lng
+  }));
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backText}>‹</Text>
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Trajet en cours</Text>
+          <Text style={styles.headerSubtitle}>Départ: {schedule}</Text>
+        </View>
+        <View style={[styles.headerBadge, { backgroundColor: axe.color }]}>
+          <Text style={styles.headerBadgeText}>{axe.shortName}</Text>
+        </View>
+      </View>
+
+      <MapView
+        provider={PROVIDER_GOOGLE}
+        style={styles.map}
+        initialRegion={{
+          latitude: 13.5137,
+          longitude: 2.1098,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05
+        }}
+      >
+        {/* Ligne du trajet */}
+        <Polyline
+          coordinates={coordinates}
+          strokeColor={axe.color}
+          strokeWidth={4}
+          lineDashPattern={[10, 5]}
+        />
+
+        {/* Marqueurs des arrêts */}
+        {axe.stops.map((stop, index) => (
+          <Marker
+            key={stop.id}
+            coordinate={{ latitude: stop.lat, longitude: stop.lng }}
+            title={stop.name}
+            pinColor={index === currentStopIndex ? axe.color : colors.text.tertiary}
+          />
+        ))}
+
+        {/* Position actuelle (bus) */}
+        {currentPosition && (
+          <Marker
+            coordinate={currentPosition}
+            title="Position actuelle"
+          >
+            <View style={[styles.busMarker, { backgroundColor: axe.color }]}>
+              <Text style={styles.busIcon}>🚌</Text>
+            </View>
+          </Marker>
+        )}
+      </MapView>
+
+      {/* Carte info prochain arrêt */}
+      <View style={styles.bottomCard}>
+        <View style={styles.progressBar}>
+          <View 
+            style={[
+              styles.progressFill, 
+              { 
+                width: `${((currentStopIndex + 1) / axe.stops.length) * 100}%`,
+                backgroundColor: axe.color
+              }
+            ]} 
+          />
+        </View>
+        
+        {nextStop ? (
+          <>
+            <View style={styles.infoHeader}>
+              <Text style={styles.infoTitle}>Prochain arrêt</Text>
+              <Text style={styles.infoProgress}>
+                Arrêt {currentStopIndex + 2}/{axe.stops.length}
+              </Text>
+            </View>
+            <View style={[styles.nextStopCard, { borderLeftColor: axe.color }]}>
+              <Text style={styles.nextStopName}>{nextStop.name}</Text>
+              <Text style={styles.nextStopEta}>⏱️ Arrivée estimée: 3 min</Text>
+            </View>
+            <Text style={styles.notification}>
+              🔔 Vous serez notifié à l'approche de votre arrêt
+            </Text>
+          </>
+        ) : (
+          <View style={styles.completedCard}>
+            <Text style={styles.completedIcon}>✅</Text>
+            <Text style={styles.completedText}>Trajet terminé</Text>
+            <Text style={styles.completedSubtext}>Vous êtes arrivé au terminus</Text>
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.
