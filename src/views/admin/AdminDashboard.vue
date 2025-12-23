@@ -5,48 +5,7 @@
       <p>Bienvenue, {{ authStore.user?.name }}</p>
     </div>
 
-    <!-- Statistiques -->
-    <div class="stats-grid">
-      <div class="stat-card stat-revenue">
-        <div class="stat-icon">
-          <i class="fas fa-euro-sign"></i>
-        </div>
-        <div class="stat-details">
-          <h3>{{ adminStore.stats.totalRevenue.toFixed(2) }} €</h3>
-          <p>Revenu total</p>
-        </div>
-      </div>
-
-      <div class="stat-card stat-orders">
-        <div class="stat-icon">
-          <i class="fas fa-shopping-bag"></i>
-        </div>
-        <div class="stat-details">
-          <h3>{{ adminStore.stats.totalOrders }}</h3>
-          <p>Commandes totales</p>
-        </div>
-      </div>
-
-      <div class="stat-card stat-pending">
-        <div class="stat-icon">
-          <i class="fas fa-clock"></i>
-        </div>
-        <div class="stat-details">
-          <h3>{{ adminStore.stats.pendingOrders }}</h3>
-          <p>En attente</p>
-        </div>
-      </div>
-
-      <div class="stat-card stat-customers">
-        <div class="stat-icon">
-          <i class="fas fa-users"></i>
-        </div>
-        <div class="stat-details">
-          <h3>{{ adminStore.stats.totalCustomers }}</h3>
-          <p>Clients</p>
-        </div>
-      </div>
-    </div>
+    <StatsGrid :stats="adminStore.stats" />
 
     <!-- Onglets -->
     <div class="admin-tabs">
@@ -79,201 +38,32 @@
     <!-- Contenu des onglets -->
     <div class="tab-content">
       <!-- Onglet Commandes -->
-      <div v-if="activeTab === 'orders'" class="orders-section">
-        <div class="section-header">
-          <h2>Gestion des commandes</h2>
-          <input 
-            type="text" 
-            class="search-input" 
-            placeholder="Rechercher une commande..."
-            v-model="searchQuery">
-        </div>
+      <OrdersTab
+        v-if="activeTab === 'orders'"
+        :orders="adminStore.orders"
+        @view-order="viewOrder"
+        @update-status="updateOrderStatus"
+        @delete-order="confirmDeleteOrder"
+      />
 
-        <div class="table-responsive">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Client</th>
-                <th>Date</th>
-                <th>Montant</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="order in filteredOrders" :key="order.id">
-                <td><strong>{{ order.id }}</strong></td>
-                <td>
-                  <div>{{ order.customerName }}</div>
-                  <small class="text-muted">{{ order.customerEmail }}</small>
-                </td>
-                <td>{{ formatDate(order.date) }}</td>
-                <td><strong>{{ order.total.toFixed(2) }} €</strong></td>
-                <td>
-                  <select 
-                    class="status-select"
-                    :class="'status-' + order.status"
-                    v-model="order.status"
-                    @change="updateOrderStatus(order.id, order.status)">
-                    <option value="pending">En attente</option>
-                    <option value="completed">Complétée</option>
-                    <option value="shipped">Expédiée</option>
-                    <option value="cancelled">Annulée</option>
-                  </select>
-                </td>
-                <td>
-                  <button class="btn-action btn-view" @click="viewOrder(order)">
-                    <i class="fas fa-eye"></i>
-                  </button>
-                  <button class="btn-action btn-delete" @click="confirmDeleteOrder(order.id)">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ProductsTab
+        v-if="activeTab === 'products'"
+        :products="productStore.products"
+        @edit-product="openProductModal"
+        @delete-product="confirmDeleteProduct"
+      />
 
-      <!-- Onglet Produits -->
-      <div v-if="activeTab === 'products'" class="products-section">
-        <div class="section-header">
-          <h2>Gestion des produits</h2>
-          <button class="btn-primary" @click="openProductModal()">
-            <i class="fas fa-plus"></i> Ajouter un produit
-          </button>
-        </div>
+      <UsersTab
+        v-if="activeTab === 'users'"
+        :users="adminStore.users"
+        @update-status="updateUserStatus"
+        @delete-user="confirmDeleteUser"
+      />
 
-        <div class="products-grid">
-          <div class="product-admin-card" v-for="product in productStore.products" :key="product.id">
-            <img :src="product.image" :alt="product.name">
-            <div class="product-admin-info">
-              <h4>{{ product.name }}</h4>
-              <p class="product-description">{{ product.description }}</p>
-              <div class="product-stock">
-                <span class="stock-badge" :class="getStockClass(product.stock)">
-                  Stock: {{ product.stock || 0 }}
-                </span>
-              </div>
-              <div class="product-admin-footer">
-                <strong>{{ product.price }} €</strong>
-                <div class="product-admin-actions">
-                  <button class="btn-action btn-edit" @click="openProductModal(product)">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button class="btn-action btn-delete" @click="confirmDeleteProduct(product.id)">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Onglet Utilisateurs -->
-      <div v-if="activeTab === 'users'" class="users-section">
-        <div class="section-header">
-          <h2>Gestion des utilisateurs</h2>
-          <input 
-            type="text" 
-            class="search-input" 
-            placeholder="Rechercher un utilisateur..."
-            v-model="searchUserQuery">
-        </div>
-
-        <div class="table-responsive">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nom</th>
-                <th>Email</th>
-                <th>Rôle</th>
-                <th>Inscrit le</th>
-                <th>Commandes</th>
-                <th>Total dépensé</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="user in filteredUsers" :key="user.id">
-                <td>{{ user.id }}</td>
-                <td><strong>{{ user.name }}</strong></td>
-                <td>{{ user.email }}</td>
-                <td>
-                  <span :class="'badge-' + user.role">{{ user.role === 'admin' ? 'Admin' : 'Client' }}</span>
-                </td>
-                <td>{{ formatDate(user.joined) }}</td>
-                <td>{{ user.totalOrders }}</td>
-                <td><strong>{{ user.totalSpent.toFixed(2) }} €</strong></td>
-                <td>
-                  <select 
-                    class="status-select"
-                    :class="'status-' + user.status"
-                    v-model="user.status"
-                    @change="updateUserStatus(user.id, user.status)">
-                    <option value="active">Actif</option>
-                    <option value="suspended">Suspendu</option>
-                    <option value="banned">Banni</option>
-                  </select>
-                </td>
-                <td>
-                  <button 
-                    class="btn-action btn-delete" 
-                    @click="confirmDeleteUser(user.id)"
-                    :disabled="user.role === 'admin'">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Onglet Analytiques -->
-      <div v-if="activeTab === 'analytics'" class="analytics-section">
-        <h2>Statistiques et analytiques</h2>
-        
-        <div class="analytics-grid">
-          <div class="analytics-card">
-            <h3>Répartition des commandes</h3>
-            <div class="chart-placeholder">
-              <div class="pie-chart">
-                <div class="pie-slice" style="background: #667eea;">
-                  <span>{{ adminStore.stats.completedOrders }}</span>
-                </div>
-                <div class="pie-info">
-                  <p><span class="color-box" style="background: #667eea;"></span> Complétées: {{ adminStore.stats.completedOrders }}</p>
-                  <p><span class="color-box" style="background: #ffa502;"></span> En attente: {{ adminStore.stats.pendingOrders }}</p>
-                  <p><span class="color-box" style="background: #ff4757;"></span> Autres: {{ adminStore.stats.totalOrders - adminStore.stats.completedOrders - adminStore.stats.pendingOrders }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="analytics-card">
-            <h3>Performances</h3>
-            <div class="performance-stats">
-              <div class="perf-item">
-                <span class="perf-label">Panier moyen</span>
-                <span class="perf-value">{{ adminStore.stats.averageOrderValue.toFixed(2) }} €</span>
-              </div>
-              <div class="perf-item">
-                <span class="perf-label">Taux de conversion</span>
-                <span class="perf-value">12.5%</span>
-              </div>
-              <div class="perf-item">
-                <span class="perf-label">Clients actifs</span>
-                <span class="perf-value">{{ adminStore.stats.totalCustomers }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AnalyticsTab
+        v-if="activeTab === 'analytics'"
+        :stats="adminStore.stats"
+      />
     </div>
 
     <!-- Modal de détails de commande -->
@@ -298,21 +88,21 @@
               <tr>
                 <th>Produit</th>
                 <th>Quantité</th>
-                <th>Prix unitaire</th>
-                <th>Total</th>
+                 <th>Prix unitaire</th>
+                 <th>Total</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(item, index) in selectedOrder.items" :key="index">
                 <td>{{ item.name }}</td>
                 <td>{{ item.quantity }}</td>
-                <td>{{ item.price.toFixed(2) }} €</td>
-                <td><strong>{{ (item.price * item.quantity).toFixed(2) }} €</strong></td>
+                  <td>{{ item.price.toFixed(2) }} FCFA</td>
+                  <td><strong>{{ (item.price * item.quantity).toFixed(2) }} FCFA</strong></td>
               </tr>
             </tbody>
           </table>
           <div class="order-total">
-            <h3>Total: {{ selectedOrder.total.toFixed(2) }} €</h3>
+              <h3>Total: {{ selectedOrder.total.toFixed(2) }} FCFA</h3>
           </div>
         </div>
       </div>
@@ -351,7 +141,7 @@
 
             <div class="row">
               <div class="col-md-6 form-group">
-                <label class="form-label">Prix (€) *</label>
+                <label class="form-label">Prix (FCFA) *</label>
                 <input 
                   type="number" 
                   class="form-control" 
@@ -423,18 +213,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useAdminStore } from '@/stores/adminStore'
 import { useProductStore } from '@/stores/produitStore'
+import StatsGrid from './components/StatsGrid.vue'
+import OrdersTab from './components/OrdersTab.vue'
+import ProductsTab from './components/ProductsTab.vue'
+import UsersTab from './components/UsersTab.vue'
+import AnalyticsTab from './components/AnalyticsTab.vue'
 
 const authStore = useAuthStore()
 const adminStore = useAdminStore()
 const productStore = useProductStore()
 
 const activeTab = ref('orders')
-const searchQuery = ref('')
-const searchUserQuery = ref('')
 const selectedOrder = ref(null)
 const showProductModal = ref(false)
 const editingProduct = ref(null)
@@ -450,36 +243,6 @@ const productForm = ref({
   image: '',
   category: ''
 })
-
-// Filtrer les commandes
-const filteredOrders = computed(() => {
-  if (!searchQuery.value) return adminStore.orders
-  
-  const query = searchQuery.value.toLowerCase()
-  return adminStore.orders.filter(order =>
-    order.id.toLowerCase().includes(query) ||
-    order.customerName.toLowerCase().includes(query) ||
-    order.customerEmail.toLowerCase().includes(query)
-  )
-})
-
-// Filtrer les utilisateurs
-const filteredUsers = computed(() => {
-  if (!searchUserQuery.value) return adminStore.users
-  
-  const query = searchUserQuery.value.toLowerCase()
-  return adminStore.users.filter(user =>
-    user.name.toLowerCase().includes(query) ||
-    user.email.toLowerCase().includes(query)
-  )
-})
-
-// Classe CSS pour le stock
-const getStockClass = (stock) => {
-  if (stock === 0) return 'stock-out'
-  if (stock < 10) return 'stock-low'
-  return 'stock-ok'
-}
 
 // Formater une date
 const formatDate = (dateString) => {
@@ -661,7 +424,7 @@ const confirmDeleteProduct = async (productId) => {
 })
 </script>
 
-<style scoped>
+<style>
 .admin-dashboard {
   padding: 2rem 0;
 }

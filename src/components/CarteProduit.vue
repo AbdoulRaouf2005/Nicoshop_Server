@@ -78,12 +78,12 @@ const handleToggleFavorite = async () => {
 
 .product-image {
       width: 100%;
-      height: 250px;
+      height: 240px;
       object-fit: cover;
 }
 
 .product-content {
-      padding: 1.5rem;
+      padding: 1.25rem;
       flex-grow: 1;
       display: flex;
       flex-direction: column;
@@ -153,5 +153,66 @@ const handleToggleFavorite = async () => {
 
 .btn-cart:hover {
       transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+      .product-card {
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      .product-image {
+            height: 190px;
+      }
+
+      .product-content {
+            padding: 1rem;
+      }
+
+      .product-title {
+            font-size: 1rem;
+            line-height: 1.2;
+      }
+
+      .product-description {
+            font-size: 0.85rem;
+            max-height: 3.6em;
+            overflow: hidden;
+      }
+
+      .product-footer {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+      }
+
+      .product-actions .row {
+            width: 100%;
+      }
+
+      .product-actions .col-8,
+      .product-actions .col-4,
+      .product-actions .col-12 {
+            padding-left: 0;
+            padding-right: 0;
+      }
+
+      .product-price {
+            display: block;
+            font-size: 0.95rem;
+            margin-bottom: 0.35rem;
+      }
+
+      .btn-favorite {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+      }
+
+      .btn-cart {
+            width: 100%;
+            text-align: center;
+            padding: 0.65rem 1rem;
+            border-radius: 12px;
+      }
 }
 </style>

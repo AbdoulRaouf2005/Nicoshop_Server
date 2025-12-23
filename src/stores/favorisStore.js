@@ -1,7 +1,7 @@
-
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './authStore'
+import router from '@/Router/Routes'
 
 const API_BASE_URL = 'http://localhost:3000/api/favoris'
 
@@ -34,6 +34,15 @@ export const useFavoritesStore = defineStore('favorites', () => {
   }
 
   const addFavorite = async (productId) => {
+    // Vérifier si l'utilisateur est connecté
+    if (!authStore.isAuthenticated) {
+      window.dispatchEvent(new CustomEvent('show-toast', { 
+        detail: { message: '⚠️ Veuillez vous connecter pour ajouter un produit en favoris' }
+      }))
+      router.push('/Connexion')
+      return
+    }
+    
     if (!authStore.user) return
     try {
       const token = localStorage.getItem('auth_token')
@@ -62,6 +71,15 @@ export const useFavoritesStore = defineStore('favorites', () => {
   }
 
   const toggleFavorite = async (product) => {
+    // Vérifier si l'utilisateur est connecté
+    if (!authStore.isAuthenticated) {
+      window.dispatchEvent(new CustomEvent('show-toast', { 
+        detail: { message: '⚠️ Veuillez vous connecter pour ajouter un produit en favoris' }
+      }))
+      router.push('/Connexion')
+      return
+    }
+    
     if (isFavorite(product.id)) {
       await removeFavorite(product.id)
     } else {

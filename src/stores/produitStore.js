@@ -60,10 +60,10 @@ export const useProductStore = defineStore('products', () => {
   // Ajouter un produit (admin)
   const addProduct = async (productData) => {
     try {
-      // Empêcher un utilisateur avec le rôle 'admin' d'ajouter un produit (contrainte demandée)
+      // Seuls les administrateurs peuvent ajouter un produit depuis cette interface
       const auth = useAuthStore()
-      if (auth.user && auth.user.role === 'admin') {
-        throw new Error('Les administrateurs ne peuvent pas ajouter de produits depuis cette interface')
+      if (!auth.user || auth.user.role !== 'admin') {
+        throw new Error('Accès refusé : seul un administrateur peut ajouter un produit')
       }
 
       if (!productData.name || !productData.price) {

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { ordersAPI } from '@/services/api'
 import { useAuthStore } from './authStore'
+import router from '@/Router/Routes'
 
 export const useCartStore = defineStore('cart', () => {
   const cart = ref([])
@@ -15,6 +16,25 @@ export const useCartStore = defineStore('cart', () => {
   })
 
   const addToCart = (product) => {
+    const authStore = useAuthStore()
+    
+    // Vérifier si l'utilisateur est connecté
+    if (!authStore.isAuthenticated) {
+      window.dispatchEvent(new CustomEvent('show-toast', { 
+        detail: { message: '⚠️ Veuillez vous connecter pour ajouter un produit au panier' }
+      }))
+      router.push('/Connexion')
+      return
+    }
+    
+    // Empêcher les admins d'ajouter au panier
+    if (authStore.user?.role === 'admin') {
+      window.dispatchEvent(new CustomEvent('show-toast', { 
+        detail: { message: '❌ Les administrateurs ne peuvent pas ajouter de produits au panier' }
+      }))
+      return
+    }
+    
     const existingItem = cart.value.find(item => item.id === product.id)
     if (existingItem) {
       existingItem.quantity++
