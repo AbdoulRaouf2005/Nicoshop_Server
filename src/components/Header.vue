@@ -2,23 +2,31 @@
       <header class="header fixed-top">
             <nav class="navbar navbar-expand-lg navbar-light">
                   <div class="container">
-                        <div class="header-top">
+                        <div class="header-top" :class="{ 'hidden': isSearchExpanded }">
                               <div class="d-flex justify-content-center align-items-center">
                                     <h1 class="site-name text-center">NicoShop</h1>
                               </div>
-                              <button class="navbar-toggler" type="button" @click="toggleMenu" :aria-expanded="false" aria-label="Toggle navigation" ref="navbarToggler">
-                                    <span class="navbar-toggler-icon"></span>
-                              </button>
+                              <div class="mobile-actions">
+                                    <button class="search-toggle-btn" @click="toggleSearch" aria-label="Toggle search">
+                                          <i class="fas fa-search"></i>
+                                    </button>
+                                    <button class="navbar-toggler" type="button" @click="toggleMenu" :aria-expanded="false" aria-label="Toggle navigation" ref="navbarToggler">
+                                          <span class="navbar-toggler-icon"></span>
+                                    </button>
+                              </div>
                         </div>
 
-                        <div class="search-bar flex-grow-1 w-100">
+                        <div class="search-bar flex-grow-1 w-100" :class="{ 'search-expanded': isSearchExpanded }">
                               <div class="input-group">
                                     <input ref="MyInput" type="text" class="form-control"
                                           placeholder="Rechercher des produits..."
                                           @input="productStore.updateSearchQuery($event.target.value)"
                                           v-model="productStore.searchQuery">
-                                    <button class="btn btn-outline-light" @click="inputFocus">
+                                    <button class="btn btn-outline-light search-btn" @click="inputFocus">
                                           <i class="fas fa-search"></i>
+                                    </button>
+                                    <button class="btn btn-outline-light close-search-btn" @click="toggleSearch">
+                                          <i class="fas fa-times"></i>
                                     </button>
                               </div>
                         </div>
@@ -84,7 +92,16 @@ const cartStore = useCartStore()
 const MyInput = ref(null)
 const navbarNav = ref(null)
 const navbarToggler = ref(null)
+const isSearchExpanded = ref(false)
 
+const toggleSearch = () => {
+      isSearchExpanded.value = !isSearchExpanded.value
+      if (isSearchExpanded.value) {
+            setTimeout(() => {
+                  MyInput.value?.focus()
+            }, 300)
+      }
+};
 
 const clearSearch = () => {
       productStore.clearSearchQuery();
@@ -156,6 +173,15 @@ onBeforeUnmount(() => {
 .search-bar button {
       border-top-right-radius: 25px;
       border-bottom-right-radius: 25px;
+}
+
+.mobile-actions {
+      display: none;
+}
+
+.search-toggle-btn,
+.close-search-btn {
+      display: none;
 }
 
 .nav-icons {
@@ -250,18 +276,57 @@ onBeforeUnmount(() => {
 
 @media (max-width: 768px) {
   .header {
-        padding: 0.75rem 0.5rem;
+        padding: 0.5rem 0.5rem;
   }
 
   .navbar .container {
         flex-direction: column;
         align-items: stretch;
-        gap: 0.75rem;
+        gap: 0.5rem;
   }
 
   .header-top {
         width: 100%;
         gap: 0.5rem;
+        transition: all 0.3s ease;
+  }
+
+  .header-top.hidden {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+  }
+
+  .mobile-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+  }
+
+  .search-toggle-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        border-radius: 20px;
+        min-width: 44px;
+        height: 38px;
+  }
+
+  .search-toggle-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+  }
+
+  .search-toggle-btn:active {
+        transform: scale(0.95);
   }
 
   .site-name {
@@ -273,37 +338,90 @@ onBeforeUnmount(() => {
         width: 100%;
         max-width: none;
         margin: 0;
-        padding: 0 0.25rem;
+        padding: 0;
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: all 0.3s ease;
+  }
+
+  .search-bar.search-expanded {
+        max-height: 50px;
+        opacity: 1;
+        padding: 0;
   }
 
   .search-bar .input-group {
-        border-radius: 18px;
+        border-radius: 20px;
         overflow: hidden;
+        position: relative;
+        height: 38px;
   }
 
   .search-bar input {
-        border-radius: 18px 0 0 18px;
+        border-radius: 20px;
+        padding: 0.5rem 80px 0.5rem 1rem;
+        height: 38px;
+        font-size: 0.9rem;
   }
 
-  .search-bar button {
-        border-radius: 0 18px 18px 0;
+  .search-bar .search-btn {
+        position: absolute;
+        right: 40px;
+        top: 0;
+        bottom: 0;
+        border-radius: 0;
+        z-index: 2;
+        border: none;
+        padding: 0 0.75rem;
+  }
+
+  .search-bar .close-search-btn {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        border-radius: 0 20px 20px 0;
+        z-index: 2;
+        border: none;
+        background: rgba(255, 59, 48, 0.8);
+        padding: 0 0.75rem;
+  }
+
+  .search-bar .close-search-btn:hover {
+        background: rgba(255, 59, 48, 1);
+  }
+
+  .navbar-collapse {
+        width: 100%;
   }
 
   .nav-icons {
         width: 100%;
-        margin-top: 0.25rem;
+        margin-top: 0.5rem;
         gap: 0.75rem;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-        justify-items: center;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+  }
+
+  .nav-icon {
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        text-align: left;
+        gap: 1rem;
+        padding: 0.5rem 0;
   }
 
   .nav-icon i {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
+        margin-bottom: 0;
   }
 
   .nav-icon span {
-        font-size: 0.78rem;
+        font-size: 0.85rem;
+        text-align: left;
   }
 }
 
@@ -321,6 +439,15 @@ onBeforeUnmount(() => {
             display: none;
       }
 
+      .mobile-actions {
+            display: none;
+      }
+
+      .search-toggle-btn,
+      .close-search-btn {
+            display: none !important;
+      }
+
       .header-top {
             width: auto;
             gap: 1.5rem;
@@ -329,6 +456,12 @@ onBeforeUnmount(() => {
       .search-bar {
             max-width: 500px;
             margin: 0 1.5rem;
+            opacity: 1 !important;
+            max-height: none !important;
+      }
+
+      .search-bar .search-btn {
+            position: static;
       }
 }
 </style>

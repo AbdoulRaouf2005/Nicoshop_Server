@@ -279,5 +279,15 @@ export const usersAPI = {
       body: JSON.stringify({ theme })
     })
     return handleResponse(response)
+  },
+
+  // Mettre à jour la région de livraison (utilisateur connecté)
+  async updateShippingRegion(shipping_region) {
+    const response = await fetch(`${API_BASE_URL}/users/me/shipping`, {
+      method: 'PUT',
+      headers: getHeaders(true),
+      body: JSON.stringify({ shipping_region })
+    })
+    return handleResponse(response)
   }
 }

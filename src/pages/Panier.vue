@@ -18,7 +18,7 @@
                                     </div>
                                     <div class="col-md-4">
                                           <h5>{{ item.name }}</h5>
-                                          <p class="text-muted mb-0">{{ item.price }} €</p>
+                                          <p class="text-muted mb-0">{{ item.price }} FCFA</p>
                                     </div>
                                     <div class="col-md-3">
                                           <div class="input-group">
@@ -31,7 +31,7 @@
                                           </div>
                                     </div>
                                     <div class="col-md-2 text-end">
-                                          <strong>{{ (item.price * item.quantity).toFixed(2) }} €</strong>
+                                          <strong>{{ (item.price * item.quantity).toFixed(0) }} FCFA</strong>
                                     </div>
                                     <div class="col-md-1 text-end">
                                           <button class="btn btn-danger btn-sm" @click="cartStore.removeFromCart(item)">
@@ -44,22 +44,46 @@
                   <div class="col-lg-4">
                         <div class="cart-summary">
                               <h4 class="mb-4">Récapitulatif</h4>
+                              
+                              <!-- Sélection de la région de livraison -->
+                              <div class="mb-3">
+                                    <label class="form-label fw-bold">Région de livraison</label>
+                                    <select class="form-select" v-model="selectedRegion" @change="updateDeliveryFee">
+                                          <option value="">Sélectionner une région</option>
+                                          <option value="Niamey">Niamey</option>
+                                          <option value="Agadez">Agadez</option>
+                                          <option value="Diffa">Diffa</option>
+                                          <option value="Dosso">Dosso</option>
+                                          <option value="Maradi">Maradi</option>
+                                          <option value="Tahoua">Tahoua</option>
+                                          <option value="Tillabéri">Tillabéri</option>
+                                          <option value="Zinder">Zinder</option>
+                                    </select>
+                              </div>
+
                               <div class="d-flex justify-content-between mb-2">
                                     <span>Sous-total:</span>
-                                    <strong>{{ cartStore.cartTotal.toFixed(2) }} €</strong>
+                                    <strong>{{ cartStore.cartTotal.toFixed(0) }} FCFA</strong>
                               </div>
                               <div class="d-flex justify-content-between mb-2">
                                     <span>Livraison:</span>
-                                    <strong>Gratuite</strong>
+                                    <strong v-if="!selectedRegion" class="text-muted">Choisir une région</strong>
+                                    <strong v-else-if="deliveryFee === 0">Gratuite</strong>
+                                    <strong v-else>{{ deliveryFee.toFixed(0) }} FCFA</strong>
                               </div>
                               <hr>
                               <div class="d-flex justify-content-between mb-4">
                                     <h5>Total:</h5>
-                                    <h5 class="text-primary">{{ cartStore.cartTotal.toFixed(2) }} €</h5>
+                                    <h5 class="text-primary">{{ totalWithDelivery.toFixed(0) }} FCFA</h5>
                               </div>
-                              <button class="btn btn-primary w-100 btn-lg mb-3" @click="showPaymentModal = true">
+                              <button class="btn btn-primary w-100 btn-lg mb-3" 
+                                    @click="showPaymentModal = true" 
+                                    :disabled="!selectedRegion">
                                     <i class="fas fa-lock"></i> Procéder au paiement
                               </button>
+                              <small class="text-muted" v-if="!selectedRegion">
+                                    <i class="fas fa-info-circle"></i> Veuillez sélectionner une région de livraison
+                              </small>
                         </div>
                   </div>
             </div>
@@ -77,7 +101,11 @@
                         <div class="payment-modal-body">
                               <div class="payment-total-display">
                                     <span>Montant à payer:</span>
-                                    <strong>{{ cartStore.cartTotal.toFixed(2) }} €</strong>
+                                    <strong>{{ totalWithDelivery.toFixed(0) }} FCFA</strong>
+                              </div>
+                              <div class="delivery-info mb-3">
+                                    <i class="fas fa-map-marker-alt"></i> 
+                                    Livraison: <strong>{{ selectedRegion }}</strong>
                               </div>
 
                               <!-- Sélection du mode de paiement -->
@@ -128,7 +156,7 @@
                                           <span v-if="isProcessing">
                                                 <i class="fas fa-spinner fa-spin"></i> Traitement...
                                           </span>
-                                          <span v-else>Payer {{ cartStore.cartTotal.toFixed(2) }} €</span>
+                                          <span v-else>Payer {{ totalWithDelivery.toFixed(0) }} FCFA</span>
                                     </button>
                               </div>
 
@@ -145,7 +173,7 @@
                                           <span v-if="isProcessing">
                                                 <i class="fas fa-spinner fa-spin"></i> Traitement...
                                           </span>
-                                          <span v-else>Payer avec PayPal</span>
+                                          <span v-else>Payer {{ totalWithDelivery.toFixed(0) }} FCFA</span>
                                     </button>
                               </div>
 
@@ -185,7 +213,7 @@
                                                 <span v-if="isProcessing">
                                                       <i class="fas fa-spinner fa-spin"></i> Traitement...
                                                 </span>
-                                                <span v-else>Payer {{ cartStore.cartTotal.toFixed(2) }} €</span>
+                                                <span v-else>Payer {{ totalWithDelivery.toFixed(0) }} FCFA</span>
                                           </button>
                                     </form>
                               </div>
@@ -235,14 +263,70 @@ import { RouterLink } from 'vue-router'
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cartStore'
-import { ordersAPI } from '@/services/api'
+import { ordersAPI, usersAPI } from '@/services/api'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
 const cartStore = useCartStore()
+const authStore = useAuthStore()
 
 const showPaymentModal = ref(false)
 const selectedPaymentMethod = ref(null)
 const isProcessing = ref(false)
+
+// Région de livraison
+const selectedRegion = ref(authStore.user?.shipping_region || '')
+const deliveryFee = ref(0)
+const lastSavedRegion = ref(selectedRegion.value || '')
+
+// Frais de livraison par région
+const deliveryFees = {
+      'Niamey': 0,        // Gratuit pour la capitale
+      'Agadez': 15,
+      'Diffa': 12,
+      'Dosso': 8,
+      'Maradi': 10,
+      'Tahoua': 10,
+      'Tillabéri': 8,
+      'Zinder': 12
+}
+
+// Total avec livraison
+const totalWithDelivery = computed(() => {
+      return cartStore.cartTotal + deliveryFee.value
+})
+
+// Mise à jour des frais de livraison
+const updateDeliveryFee = () => {
+      if (selectedRegion.value) {
+            deliveryFee.value = deliveryFees[selectedRegion.value] || 0
+            persistRegion()
+      } else {
+            deliveryFee.value = 0
+      }
+}
+
+// Persister la région de livraison côté profil
+const persistRegion = async () => {
+      if (!authStore.isAuthenticated) return
+      if (lastSavedRegion.value === selectedRegion.value) return
+      try {
+            await usersAPI.updateShippingRegion(selectedRegion.value)
+            lastSavedRegion.value = selectedRegion.value
+            window.dispatchEvent(new CustomEvent('show-toast', {
+                  detail: { message: `✓ Région enregistrée: ${selectedRegion.value}` }
+            }))
+      } catch (error) {
+            window.dispatchEvent(new CustomEvent('show-toast', {
+                  detail: { message: '❌ Erreur lors de la sauvegarde de la région' }
+            }))
+      }
+}
+
+// Initialiser les frais si une région est déjà connue
+if (selectedRegion.value) {
+      updateDeliveryFee()
+}
 
 // Détails de la carte bancaire
 const cardDetails = ref({
@@ -309,13 +393,16 @@ const processStripePayment = async () => {
             // Créer la commande avec paiement Stripe
             const orderData = {
                   items: cartStore.cart,
-                  total: cartStore.cartTotal,
+                  total: totalWithDelivery.value,
                   payment_method: 'stripe',
-                  shipping_address: ''
+                  shipping_address: selectedRegion.value,
+                  shipping_region: selectedRegion.value,
+                  delivery_fee: deliveryFee.value,
+                  currency: 'FCFA'
             }
             await ordersAPI.create(orderData)
             window.dispatchEvent(new CustomEvent('show-toast', {
-                  detail: { message: '✓ Paiement Stripe simulé - Commande créée' }
+                  detail: { message: `✓ Paiement Stripe simulé - Livraison à ${selectedRegion.value}` }
             }))
             cartStore.checkout()
             closePaymentModal()
@@ -336,13 +423,16 @@ const processPayPalPayment = async () => {
             // Créer la commande avec paiement PayPal
             const orderData = {
                   items: cartStore.cart,
-                  total: cartStore.cartTotal,
+                  total: totalWithDelivery.value,
                   payment_method: 'paypal',
-                  shipping_address: ''
+                  shipping_address: selectedRegion.value,
+                  shipping_region: selectedRegion.value,
+                  delivery_fee: deliveryFee.value,
+                  currency: 'FCFA'
             }
             await ordersAPI.create(orderData)
             window.dispatchEvent(new CustomEvent('show-toast', {
-                  detail: { message: '✓ Paiement PayPal simulé - Commande créée' }
+                  detail: { message: `✓ Paiement PayPal simulé - Livraison à ${selectedRegion.value}` }
             }))
             cartStore.checkout()
             closePaymentModal()
@@ -367,13 +457,16 @@ const processCardPayment = async () => {
             // Créer la commande avec paiement par carte
             const orderData = {
                   items: cartStore.cart,
-                  total: cartStore.cartTotal,
+                  total: totalWithDelivery.value,
                   payment_method: 'card',
-                  shipping_address: ''
+                  shipping_address: selectedRegion.value,
+                  shipping_region: selectedRegion.value,
+                  delivery_fee: deliveryFee.value,
+                  currency: 'FCFA'
             }
             await ordersAPI.create(orderData)
             window.dispatchEvent(new CustomEvent('show-toast', {
-                  detail: { message: '✓ Paiement par carte simulé - Commande créée' }
+                  detail: { message: `✓ Paiement par carte simulé - Livraison à ${selectedRegion.value}` }
             }))
             cartStore.checkout()
             closePaymentModal()
@@ -398,13 +491,16 @@ const processMobilePayment = async () => {
             // Créer la commande avec paiement Mobile Money
             const orderData = {
                   items: cartStore.cart,
-                  total: cartStore.cartTotal,
+                  total: totalWithDelivery.value,
                   payment_method: 'mobile_money',
-                  shipping_address: ''
+                  shipping_address: selectedRegion.value,
+                  shipping_region: selectedRegion.value,
+                  delivery_fee: deliveryFee.value,
+                  currency: 'FCFA'
             }
             await ordersAPI.create(orderData)
             window.dispatchEvent(new CustomEvent('show-toast', {
-                  detail: { message: '✓ Paiement Mobile Money simulé - Commande créée' }
+                  detail: { message: `✓ Paiement Mobile Money simulé - Livraison à ${selectedRegion.value}` }
             }))
             cartStore.checkout()
             closePaymentModal()
@@ -531,6 +627,20 @@ const processMobilePayment = async () => {
 .payment-total-display strong {
       color: #667eea;
       font-size: 1.5rem;
+}
+
+.delivery-info {
+      background: #e8f4f8;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: #333;
+      border-left: 4px solid #667eea;
+}
+
+.delivery-info i {
+      color: #667eea;
+      margin-right: 0.5rem;
 }
 
 .payment-methods {

@@ -211,8 +211,10 @@ const handleToggleFavorite = async () => {
       .btn-cart {
             width: 100%;
             text-align: center;
-            padding: 0.65rem 1rem;
+            padding: 0.75rem 1rem;
             border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 500;
       }
 }
 </style>
