@@ -1,0 +1,600 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "NicoShop API",
+    "version": "1.0.0",
+    "description": "API REST de l'e-commerce NicoShop"
+  },
+  "servers": [
+    { "url": "http://localhost:3001", "description": "Serveur local" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" }
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "msg": { "type": "string" },
+                "path": { "type": "string" },
+                "location": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["customer", "admin"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["active", "suspended", "banned"] },
+          "picture": { "type": "string" },
+          "theme": { "type": "string", "enum": ["light", "dark"] },
+          "shipping_region": { "type": "string" }
+        }
+      },
+      "UserPublic": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["customer", "admin"] },
+          "picture": { "type": "string" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "token": { "type": "string" },
+          "user": { "$ref": "#/components/schemas/UserPublic" }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "price": { "type": "number", "format": "float" },
+          "image_url": { "type": "string", "format": "uri" },
+          "stock": { "type": "integer" },
+          "category": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "inactive", "out_of_stock"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "product_id": { "type": "integer" },
+          "product_name": { "type": "string" },
+          "quantity": { "type": "integer" },
+          "price": { "type": "number", "format": "float" }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "user_id": { "type": "integer" },
+          "customer_name": { "type": "string" },
+          "customer_email": { "type": "string", "format": "email" },
+          "total": { "type": "number", "format": "float" },
+          "status": { "type": "string", "enum": ["pending", "completed", "shipped", "cancelled"] },
+          "payment_method": { "type": "string" },
+          "shipping_address": { "type": "string" },
+          "shipping_region": { "type": "string" },
+          "delivery_fee": { "type": "number", "format": "float" },
+          "currency": { "type": "string", "enum": ["FCFA", "EUR", "USD"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderItem" } }
+        }
+      },
+      "Favori": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "product_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "price": { "type": "number", "format": "float" },
+          "image_url": { "type": "string", "format": "uri" }
+        }
+      },
+      "UserListItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string" },
+          "joined": { "type": "string", "format": "date-time" },
+          "status": { "type": "string" },
+          "totalOrders": { "type": "integer" },
+          "totalSpent": { "type": "number", "format": "float" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "tags": ["Authentification"],
+        "summary": "Inscription utilisateur",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": { "type": "string", "example": "Jean Dupont" },
+                  "email": { "type": "string", "format": "email", "example": "jean@example.com" },
+                  "password": { "type": "string", "minLength": 6, "example": "monmotdepasse" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Inscription réussie", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
+          "400": { "description": "Données invalides ou email déjà utilisé", "content": { "application/json": { "schema": { "oneOf": [ { "$ref": "#/components/schemas/ValidationError" }, { "$ref": "#/components/schemas/Error" } ] } } } },
+          "429": { "description": "Trop de tentatives" }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Authentification"],
+        "summary": "Connexion utilisateur",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "jean@example.com" },
+                  "password": { "type": "string", "example": "monmotdepasse" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Connexion réussie", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
+          "401": { "description": "Email ou mot de passe incorrect" },
+          "429": { "description": "Trop de tentatives" }
+        }
+      }
+    },
+    "/api/auth/oauth": {
+      "post": {
+        "tags": ["Authentification"],
+        "summary": "Connexion OAuth (Google/Facebook)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "name", "provider", "oauth_id"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "jean@gmail.com" },
+                  "name": { "type": "string", "example": "Jean Dupont" },
+                  "provider": { "type": "string", "enum": ["google", "facebook"], "example": "google" },
+                  "oauth_id": { "type": "string", "example": "123456789" },
+                  "picture": { "type": "string", "format": "uri", "example": "https://example.com/photo.jpg" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Connexion OAuth réussie", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
+          "400": { "description": "Données invalides" },
+          "429": { "description": "Trop de tentatives" }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "tags": ["Produits"],
+        "summary": "Liste des produits actifs",
+        "responses": {
+          "200": { "description": "Liste des produits", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Produits"],
+        "summary": "Créer un produit (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "description", "price", "image_url", "stock"],
+                "properties": {
+                  "name": { "type": "string", "example": "Nouveau produit" },
+                  "description": { "type": "string", "example": "Description du produit" },
+                  "price": { "type": "number", "minimum": 0, "example": 29.99 },
+                  "image_url": { "type": "string", "format": "uri", "example": "https://example.com/image.jpg" },
+                  "stock": { "type": "integer", "minimum": 0, "example": 100 },
+                  "category": { "type": "string", "example": "Électronique" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Produit créé", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } },
+          "400": { "description": "Données invalides" },
+          "403": { "description": "Accès refusé" }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "tags": ["Produits"],
+        "summary": "Détail d'un produit",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": { "description": "Produit trouvé", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } },
+          "404": { "description": "Produit non trouvé" }
+        }
+      },
+      "put": {
+        "tags": ["Produits"],
+        "summary": "Modifier un produit (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "price": { "type": "number", "minimum": 0 },
+                  "image_url": { "type": "string", "format": "uri" },
+                  "stock": { "type": "integer", "minimum": 0 },
+                  "category": { "type": "string" },
+                  "status": { "type": "string", "enum": ["active", "inactive", "out_of_stock"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Produit mis à jour", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } },
+          "400": { "description": "Données invalides" },
+          "403": { "description": "Accès refusé" },
+          "404": { "description": "Produit non trouvé" }
+        }
+      },
+      "delete": {
+        "tags": ["Produits"],
+        "summary": "Supprimer un produit (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Produit supprimé", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } } } } },
+          "403": { "description": "Accès refusé" },
+          "404": { "description": "Produit non trouvé" }
+        }
+      }
+    },
+    "/api/orders": {
+      "get": {
+        "tags": ["Commandes"],
+        "summary": "Toutes les commandes (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Liste des commandes", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } } } },
+          "403": { "description": "Accès refusé" }
+        }
+      },
+      "post": {
+        "tags": ["Commandes"],
+        "summary": "Créer une commande",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["items", "total"],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["id", "quantity", "price"],
+                      "properties": {
+                        "id": { "type": "integer", "example": 1 },
+                        "name": { "type": "string", "example": "Produit" },
+                        "quantity": { "type": "integer", "example": 2 },
+                        "price": { "type": "number", "example": 29.99 }
+                      }
+                    }
+                  },
+                  "total": { "type": "number", "minimum": 0, "example": 59.98 },
+                  "shipping_address": { "type": "string", "example": "123 Rue Example" },
+                  "shipping_region": { "type": "string", "example": "Douala" },
+                  "delivery_fee": { "type": "number", "minimum": 0, "example": 5.00 },
+                  "payment_method": { "type": "string", "example": "OM" },
+                  "currency": { "type": "string", "enum": ["FCFA", "EUR", "USD"], "example": "FCFA" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Commande créée", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
+          "400": { "description": "Données invalides" }
+        }
+      }
+    },
+    "/api/orders/user/{userId}": {
+      "get": {
+        "tags": ["Commandes"],
+        "summary": "Commandes d'un utilisateur",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": { "description": "Commandes de l'utilisateur", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } } } }
+        }
+      }
+    },
+    "/api/orders/{id}/status": {
+      "put": {
+        "tags": ["Commandes"],
+        "summary": "Modifier le statut d'une commande (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "CMD-abc12345" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["pending", "completed", "shipped", "cancelled"], "example": "shipped" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Statut mis à jour" },
+          "400": { "description": "Statut invalide" },
+          "403": { "description": "Accès refusé" },
+          "404": { "description": "Commande non trouvée" }
+        }
+      }
+    },
+    "/api/orders/{id}": {
+      "delete": {
+        "tags": ["Commandes"],
+        "summary": "Supprimer une commande (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Commande supprimée" },
+          "403": { "description": "Accès refusé" },
+          "404": { "description": "Commande non trouvée" }
+        }
+      }
+    },
+    "/api/favoris": {
+      "get": {
+        "tags": ["Favoris"],
+        "summary": "Favoris de l'utilisateur connecté",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Liste des favoris", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Favori" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Favoris"],
+        "summary": "Ajouter un produit aux favoris",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["product_id"],
+                "properties": {
+                  "product_id": { "type": "integer", "example": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Favori ajouté", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Favori" } } } },
+          "400": { "description": "ID produit requis" },
+          "409": { "description": "Déjà en favoris" }
+        }
+      }
+    },
+    "/api/favoris/{product_id}": {
+      "delete": {
+        "tags": ["Favoris"],
+        "summary": "Supprimer un favori",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "product_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": { "description": "Favori supprimé" },
+          "404": { "description": "Favori non trouvé" }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": ["Utilisateurs"],
+        "summary": "Liste des utilisateurs (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Liste des utilisateurs avec statistiques", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/UserListItem" } } } } },
+          "403": { "description": "Accès refusé" }
+        }
+      }
+    },
+    "/api/users/{id}": {
+      "get": {
+        "tags": ["Utilisateurs"],
+        "summary": "Détail d'un utilisateur (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": { "description": "Utilisateur trouvé", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
+          "403": { "description": "Accès refusé" },
+          "404": { "description": "Utilisateur non trouvé" }
+        }
+      },
+      "delete": {
+        "tags": ["Utilisateurs"],
+        "summary": "Supprimer un utilisateur (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Utilisateur supprimé" },
+          "403": { "description": "Accès refusé (ou dernier admin)" },
+          "404": { "description": "Utilisateur non trouvé" }
+        }
+      }
+    },
+    "/api/users/{id}/status": {
+      "put": {
+        "tags": ["Utilisateurs"],
+        "summary": "Changer le statut d'un utilisateur (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["active", "suspended", "banned"], "example": "suspended" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Statut mis à jour" },
+          "400": { "description": "Statut invalide" },
+          "403": { "description": "Accès refusé" },
+          "404": { "description": "Utilisateur non trouvé" }
+        }
+      }
+    },
+    "/api/users/me/theme": {
+      "put": {
+        "tags": ["Utilisateurs"],
+        "summary": "Changer le thème (light/dark)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["theme"],
+                "properties": {
+                  "theme": { "type": "string", "enum": ["light", "dark"], "example": "dark" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Thème mis à jour" },
+          "400": { "description": "Thème invalide" }
+        }
+      }
+    },
+    "/api/users/me/shipping": {
+      "put": {
+        "tags": ["Utilisateurs"],
+        "summary": "Changer la région de livraison",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["shipping_region"],
+                "properties": {
+                  "shipping_region": { "type": "string", "example": "Yaoundé" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Région mise à jour" },
+          "400": { "description": "Région requise" }
+        }
+      }
+    }
+  }
+}

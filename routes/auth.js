@@ -8,8 +8,40 @@ const MySecret = process.env.JWT_SECRET
 
 const router = express.Router();
 
+const rateLimitStore = new Map();
+function authLimiter(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000;
+  const maxAttempts = 10;
+
+  if (!rateLimitStore.has(ip)) {
+    rateLimitStore.set(ip, []);
+  }
+
+  const timestamps = rateLimitStore.get(ip).filter(t => now - t < windowMs);
+  if (timestamps.length >= maxAttempts) {
+    return res.status(429).json({ error: 'Trop de tentatives. Réessayez dans 15 minutes.' });
+  }
+
+  timestamps.push(now);
+  rateLimitStore.set(ip, timestamps);
+  next();
+}
+
+// Nettoie le store toutes les 15 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, timestamps] of rateLimitStore.entries()) {
+    const valid = timestamps.filter(t => now - t < 15 * 60 * 1000);
+    if (valid.length === 0) rateLimitStore.delete(ip);
+    else rateLimitStore.set(ip, valid);
+  }
+}, 15 * 60 * 1000);
+
 // POST - Inscription
 router.post('/register',
+  authLimiter,
   [
     body('name').notEmpty().trim().withMessage('Le nom est requis'),
     body('email').isEmail().normalizeEmail().withMessage('Email invalide'),
@@ -68,6 +100,7 @@ router.post('/register',
 
 // POST - Connexion
 router.post('/login',
+  authLimiter,
   [
     body('email').isEmail().normalizeEmail(),
     body('password').notEmpty()
@@ -122,6 +155,7 @@ router.post('/login',
 
 // POST - Connexion/Inscription OAuth (Google, Facebook)
 router.post('/oauth',
+  authLimiter,
   [
     body('email').isEmail().normalizeEmail(),
     body('name').notEmpty().trim(),

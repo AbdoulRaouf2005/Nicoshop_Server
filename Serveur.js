@@ -1,10 +1,12 @@
 import cors from 'cors'
+import { readFileSync } from 'fs'
 import authRoutes from './routes/auth.js'
 import productsRoutes from './routes/products.js'
 import ordersRoutes from './routes/orders.js'
 import favorisRoutes from './routes/favoris.js'
 import usersRoutes from './routes/users.js'
 import express from 'express'
+import swaggerUi from 'swagger-ui-express'
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -23,6 +25,10 @@ app.use('/api/products', productsRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/favoris', favorisRoutes);
 app.use('/api/users', usersRoutes);
+
+// Documentation Swagger
+const swaggerSpec = JSON.parse(readFileSync('./docs/swagger.json', 'utf-8'));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 
 // Gestion des erreurs 404

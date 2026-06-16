@@ -70,7 +70,31 @@ router.post('/', authenticateToken, async (req, res) => {
 
     if (insertError) throw insertError;
 
-    res.status(201).json({ message: 'Ajouté aux favoris', favori: data });
+    const { data: newFav, error: fetchError } = await supabase
+      .from('favoris')
+      .select(`
+        id,
+        product_id,
+        products (
+          name,
+          description,
+          price,
+          image_url
+        )
+      `)
+      .eq('id', data.id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    res.status(201).json({
+      id: newFav.id,
+      product_id: newFav.product_id,
+      name: newFav.products.name,
+      description: newFav.products.description,
+      price: newFav.products.price,
+      image_url: newFav.products.image_url
+    });
   } catch (error) {
     console.error('Erreur ajout favori:', error);
     res.status(500).json({ error: 'Erreur serveur' });

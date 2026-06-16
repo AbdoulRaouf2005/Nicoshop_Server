@@ -1,4 +1,4 @@
-// File: backend/routes/orders.js
+import { randomUUID } from 'crypto'
 import supabase from '../config/supabase.js'
 import { authenticateToken, isAdmin } from '../middleware/auth.js'
 import express from 'express'
@@ -113,7 +113,7 @@ router.post('/',
         return res.status(404).json({ error: 'Utilisateur non trouvé' });
       }
 
-      const orderId = 'CMD' + Date.now();
+      const orderId = 'CMD-' + randomUUID().slice(0, 8);
 
       // Créer la commande
       const { data: newOrder, error: orderError } = await supabase
